@@ -15,14 +15,18 @@ from pygments.token import Token
 from prettytable import PrettyTable
 
 SESSION_FILE = "session.pickle"
-BEATS_URL = "https://www-s.acm.illinois.edu/beats/1104"
+BEATS_URL = "https://www-s.acm.illinois.edu/beats/"
 MAXLEN = 30
 
 status = dict()
 current = dict()
 session = dict()
+endpoint = 1104
 
 s = ccso.Network("webapps.cs.uiuc.edu", 105)
+
+def beats_url():
+    return BEATS_URL + str(endpoint)
 
 def get_login():
     global session
@@ -34,7 +38,7 @@ def get_login():
 
     username = get_input("Username: ")
     password = get_input("Password: ", is_password=True)
-    r = requests.post(BEATS_URL + "/v1/session", data={"username":username, "password":password})
+    r = requests.post(beats_url() + "/v1/session", data={"username":username, "password":password})
     if r.status_code is not 201:
         print("couldn't log in: " + r.json()['reason'])
         get_login()
@@ -44,7 +48,7 @@ def get_login():
             pickle.dump(session, f, pickle.HIGHEST_PROTOCOL)
 
 def print_queue_now():
-    r = requests.get(BEATS_URL + "/v1/queue")
+    r = requests.get(beats_url() + "/v1/queue")
     print_queue(r)
 
 def print_queue(response):
@@ -103,18 +107,18 @@ def print_songs(songs):
     print(x)
 
 def random_songs():
-    r = requests.get(BEATS_URL + "/v1/songs/random")
+    r = requests.get(beats_url() + "/v1/songs/random")
     prompt_songs(r)
 
 def search(query):
-    r = requests.get(BEATS_URL + "/v1/songs/search", params={"q":query})
+    r = requests.get(beats_url() + "/v1/songs/search", params={"q":query})
     if query.startswith("artist:"):
         prompt_albums(r)
     else:
         prompt_songs(r)
     
 def remove():
-    r = requests.get(BEATS_URL + "/v1/queue")
+    r = requests.get(beats_url() + "/v1/queue")
     queue = r.json()['queue']
     print_queue(r)
     query = get_input("Which song? ")
@@ -131,22 +135,22 @@ def remove():
         print("not in range")
         return
 
-    r = requests.delete(BEATS_URL + "/v1/queue/" + str(song['id']), data={'token':session['token']})
+    r = requests.delete(beats_url() + "/v1/queue/" + str(song['id']), data={'token':session['token']})
     print("Removed " + song['artist'] + " - " + song['title'] + ".")
     print_queue(r)
 
 def show_history():
-    r = requests.get(BEATS_URL + "/v1/songs/history")
+    r = requests.get(beats_url() + "/v1/songs/history")
     songs = r.json()['results']
     print_songs(songs)
 
 def show_top_songs():
-    r = requests.get(BEATS_URL + "/v1/songs/top_songs")
+    r = requests.get(beats_url() + "/v1/songs/top_songs")
     songs = r.json()['results']
     print_songs(songs)
 
 def show_top_artists():
-    r = requests.get(BEATS_URL + "/v1/songs/top_artists")
+    r = requests.get(beats_url() + "/v1/songs/top_artists")
     artists = r.json()['results']
     x = PrettyTable(["#", "Artist", "Plays"])
     x.border = False
@@ -198,7 +202,7 @@ def prompt_songs(r):
     else:
         print("not in range")
         return
-    response = requests.post(BEATS_URL + "/v1/queue/add", data={'token':session['token'], 'id':str(song['id'])})
+    response = requests.post(beats_url() + "/v1/queue/add", data={'token':session['token'], 'id':str(song['id'])})
     json = response.json()
     if json.get('message'):
         get_login()
@@ -207,7 +211,7 @@ def prompt_songs(r):
         print_queue(response)
 
 def pause():
-    r = requests.post(BEATS_URL + "/v1/player/pause", data={'token':session['token']})
+    r = requests.post(beats_url() + "/v1/player/pause", data={'token':session['token']})
     response = r.json()
     if response.get('message'):
         get_login()
@@ -215,7 +219,7 @@ def pause():
         update_status(r.json())
 
 def play_next():
-    r = requests.post(BEATS_URL + "/v1/player/play_next", data={'token':session['token']})
+    r = requests.post(beats_url() + "/v1/player/play_next", data={'token':session['token']})
     response = r.json()
     if response.get('message'):
         get_login()
@@ -230,20 +234,20 @@ def player_set_volume(query):
         return
 
     if 0 <= vol <= 100:
-        r = requests.post(BEATS_URL + "/v1/player/volume", data={'token':session['token'], 'volume':vol})
+        r = requests.post(beats_url() + "/v1/player/volume", data={'token':session['token'], 'volume':vol})
         update_status(r.json())
     else:
         print("volume must be between 0 and 100.")
 
 def now_playing():
     global current
-    r = requests.get(BEATS_URL + "/v1/now_playing")
+    r = requests.get(beats_url() + "/v1/now_playing")
     json = r.json()
     update_status(json['player_status'])
     current = json['media']
 
 def print_now_playing():
-    r = requests.get(BEATS_URL + "/v1/now_playing")
+    r = requests.get(beats_url() + "/v1/now_playing")
     song = r.json()['media']
     print("Title: " + colored(song['title'], "blue"))
     print("Artist: " + colored(song['artist'], "magenta"))
@@ -321,9 +325,10 @@ def run_command(text):
             show_top_artists()
         elif command == "image":
             if current.get('art_uri'):
-                wget.download(BEATS_URL + "/" + current['art_uri'])
-                path, filename = os.path.split(current['art_uri'])
-                subprocess.call("imgt.sh \"" + filename + "\"", shell=True)
+                if os.path.isfile("art"):
+                    os.remove("./art")
+                wget.download(beats_url() + "/" + current['art_uri'], out="art")
+                subprocess.call("imgt.sh art", shell=True)
         elif command == "quit":
             quit()
         elif not command:

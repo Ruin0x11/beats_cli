@@ -8,3 +8,4 @@ The following dependencies are needed:
 * termcolor
 * prettytable
 * wget
+* w3m (for terminal image viewing)
