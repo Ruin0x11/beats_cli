@@ -116,6 +116,28 @@ def remove():
     r = requests.delete(BEATS_URL + "/v1/queue/" + str(song['id']), data={'token':session['token']})
     print("Removed " + song['artist'] + " - " + song['title'] + ".")
     print_queue(r)
+
+def show_history():
+    r = requests.get(BEATS_URL + "/v1/songs/history")
+    songs = r.json()['results']
+    print_songs(songs)
+
+def show_top_songs():
+    r = requests.get(BEATS_URL + "/v1/songs/top_songs")
+    songs = r.json()['results']
+    print_songs(songs)
+
+def show_top_artists():
+    r = requests.get(BEATS_URL + "/v1/songs/top_songs")
+    artists = r.json()['results']
+    x = PrettyTable(["#", "Artist", "Plays"])
+    x.border = False
+    x.align["Artist"] = "l"
+    n = 0
+    for artist in artists:
+        n += 1
+        x.add_row([n, colored(artist['artist'], "blue"), colored(str(artist['play_count']), "magenta")])
+    print(x)
     
 def prompt_songs(r):
     songs = r.json()['results']
@@ -223,6 +245,8 @@ def main():
             random_songs()
         elif command == "search":
             search(query)
+        elif command == "history":
+            show_history()
         elif command == "queue":
             print_queue_now()
         elif command == "skip":
@@ -233,6 +257,10 @@ def main():
             remove()
         elif command == "volume":
             player_set_volume(query)
+        elif command == "topsongs":
+            show_top_artists()
+        elif command == "topartists":
+            show_top_artists()
         elif command == "image":
             if current.get('art_uri'):
                 wget.download(BEATS_URL + "/" + current['art_uri'])
