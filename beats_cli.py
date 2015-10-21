@@ -328,7 +328,7 @@ def run_command(text):
                 if os.path.isfile("art"):
                     os.remove("./art")
                 wget.download(beats_url() + "/" + current['art_uri'], out="art")
-                subprocess.call("imgt.sh art", shell=True)
+                subprocess.call("./imgt.sh art", shell=True)
         elif command == "quit":
             quit()
         elif not command:
