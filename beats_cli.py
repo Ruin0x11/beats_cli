@@ -7,6 +7,7 @@ import ccso
 import json
 import pickle
 import sys
+import urllib
 from termcolor import colored
 from prompt_toolkit.shortcuts import get_input
 from prompt_toolkit.contrib.completers import WordCompleter
@@ -24,6 +25,11 @@ session = dict()
 endpoint = 1104
 
 s = ccso.Network("webapps.cs.uiuc.edu", 105)
+
+def is_url(url):
+    parsed_url = urllib.parse.urlparse(url)
+    return bool(parsed_url.scheme)
+    
 
 def beats_url():
     return BEATS_URL + str(endpoint)
@@ -135,7 +141,13 @@ def remove():
         print("not in range")
         return
 
-    r = requests.delete(beats_url() + "/v1/queue/" + str(song['id']), data={'token':session['token']})
+    remove_song(song['id'])
+
+def remove_song(song):
+    r = requests.delete(beats_url() + "/v1/queue/" + str(song), data={'token':session['token']})
+    if r.json().get('message'):
+        print("Couldn't remove song (added from stream?)")
+        return
     print("Removed " + song['artist'] + " - " + song['title'] + ".")
     print_queue(r)
 
@@ -163,6 +175,9 @@ def show_top_artists():
 
 def prompt_albums(r):
     albums = r.json()['results']
+    if len(albums) == 0:
+        print("No results.")
+        return
     n = 0
     x = PrettyTable(["#", "Album", "Songs"])
     x.border = False
@@ -189,6 +204,9 @@ def prompt_albums(r):
     
 def prompt_songs(r):
     songs = r.json()['results']
+    if len(songs) == 0:
+        print("No results.")
+        return
     print_songs(songs)
     res = get_input("Song? ")
     if not res:
@@ -209,6 +227,39 @@ def prompt_songs(r):
     else:
         # print("Added " + song['artist'] + " - " + song['title'])
         print_queue(response)
+
+def add(query):
+    if query.startswith("artist:"):
+        return
+    if is_url(query) == True:
+        r = requests.post(beats_url() + "/v1/queue/add", data={"token":session['token'], "url":query})
+        print(r.json())
+        if r.json().get('message'):
+            get_login()
+            return
+        else:
+            print("Added stream.")
+            print_queue(r)
+            return
+
+    r = requests.get(beats_url() + "/v1/songs/search", params={"q":query})
+    songs = r.json().get('results')
+    if len(songs) == 0:
+        print("No results.")
+        return
+    elif len(songs) == 1:
+        song = songs[0]
+        r = requests.post(beats_url() + "/v1/queue/add", data={'token':session['token'], 'id':str(song['id'])})
+        if r.json().get('message'):
+            get_login()
+            return
+        else:
+            print("Added " + song['artist'] + " - " + song['title'] + ".")
+            print_queue(r)
+            return
+    else:
+        prompt_songs(r)
+
 
 def pause():
     r = requests.post(beats_url() + "/v1/player/pause", data={'token':session['token']})
@@ -273,6 +324,7 @@ command_completer = WordCompleter([
     "search",
     "artist",
     "album",
+    "add",
     "history",
     "queue",
     "quit",
@@ -306,6 +358,8 @@ def run_command(text):
             search("artist:" + query)
         elif command == "album":
             search("album:" + query)
+        elif command == "add":
+            add(query)
         elif command == "history":
             show_history()
         elif command == "queue":
@@ -315,7 +369,14 @@ def run_command(text):
         elif command == "pause":
             pause()
         elif command == "remove":
-            remove()
+            if not query:
+                remove()
+            else:
+                try:
+                    num = int(query)
+                    remove_song(num)
+                except ValueError:
+                    print("not an integer")
         elif command == "volume":
             player_set_volume(query)
         elif command == "nowplaying":
@@ -366,17 +427,6 @@ def main():
         now_playing()
 
 if __name__ == '__main__':
-
-
-    # parser = argparse.ArgumentParser(description="Run a specific chroma animation script.")
-    # parser.add_argument('animation',
-    #     metavar='animation',
-    #     help='One of these animations: '+string.join(os.listdir('animations/'),', '),
-    #     choices=os.listdir('animations/'))
-    # args = parser.parse_args()
-    # animation = args.animation
-
-
     get_login()
     now_playing()
     if len(sys.argv) > 1:

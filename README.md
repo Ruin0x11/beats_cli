@@ -15,7 +15,7 @@ The following dependencies are needed:
 album [album name]
 artist [artist name]
 history
-image (display image in terminal - requires w3m & rxvt)
+image (display album art in terminal - requires w3m & rxvt)
 nowplaying
 pause
 queue
