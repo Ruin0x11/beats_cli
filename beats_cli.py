@@ -275,6 +275,7 @@ command_completer = WordCompleter([
     "album",
     "history",
     "queue",
+    "quit",
     "skip",
     "pause",
     "remove",
