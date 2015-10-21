@@ -3,6 +3,8 @@ import subprocess
 import datetime
 import wget
 import os
+import ccso
+import json
 from termcolor import colored
 from prompt_toolkit.shortcuts import get_input
 from pygments.style import Style
@@ -17,15 +19,15 @@ status = dict()
 current = dict()
 session = dict()
 
+s = ccso.Network("webapps.cs.uiuc.edu", 105)
+
 def get_login():
     global session
-    print("not logged in.")
     username = get_input("Username: ")
     password = get_input("Password: ", is_password=True)
     r = requests.post(BEATS_URL + "/v1/session", data={"username":username, "password":password})
     if r.status_code is not 201:
-        print(r.json()['message'])
-        print(r.json()['reason'])
+        print("couldn't log in: " + r.json()['reason'])
         get_login()
     else:
         session = dict(r.json())
@@ -51,13 +53,18 @@ def print_queue(response):
         else:
             album = ''
         length = int(float(song['length']))
-        length = datetime.timedelta(seconds=length)
+        length = colored(datetime.timedelta(seconds=length), "red")
         voter = song['packet']['user']
-        x.add_row([n, title, artist, album, length, voter])
+        voter_name = s.query('alias=' + voter)
+        if not voter_name[0]:
+            voter_name = voter
+        else:
+            voter_name = voter_name[0]['uiucedufirstname'] + " " + voter_name[0]['uiucedulastname']
+        x.add_row([n, title, artist, album, length, colored(voter_name, "cyan")])
     print(x)
 
 def print_songs(songs):
-    x = PrettyTable(["#", "Title", "Artist", "Album", "Length", "Playcount", "Uploader"])
+    x = PrettyTable(["#", "Title", "Artist", "Album", "Length", "Uploader", "Plays"])
     x.border = False
     x.align["Title"] = "l"
     x.align["Artist"] = "l"
@@ -69,10 +76,15 @@ def print_songs(songs):
         artist = colored(song['artist'][:MAXLEN], "magenta")
         album = colored(song['album'][:MAXLEN], "yellow")
         length = int(float(song['length']))
-        length = datetime.timedelta(seconds=length)
+        length = colored(datetime.timedelta(seconds=length), "red")
         playcount = int(song['play_count'])
-        uploader = colored(song['path'].split('/')[2], "red")
-        x.add_row([n, title, artist, album, length, playcount, uploader])
+        uploader = song['path'].split('/')[2]
+        uploader_name = s.query('alias=' + uploader)
+        if not uploader_name:
+            uploader_name = uploader
+        else:
+            uploader_name = uploader_name[0]['uiucedufirstname'] + " " + uploader_name[0]['uiucedulastname']
+        x.add_row([n, title, artist, album, length, colored(uploader_name, "cyan"), playcount])
     print(x)
 
 def random_songs():
@@ -222,11 +234,14 @@ def main():
         elif command == "volume":
             player_set_volume(query)
         elif command == "image":
-            wget.download(BEATS_URL + "/" + current['art_uri'])
-            path, filename = os.path.split(current['art_uri'])
-            subprocess.call("imgt.sh \"" + filename + "\"", shell=True)
+            if current.get('art_uri'):
+                wget.download(BEATS_URL + "/" + current['art_uri'])
+                path, filename = os.path.split(current['art_uri'])
+                subprocess.call("imgt.sh \"" + filename + "\"", shell=True)
         elif command == "quit":
             quit()
+        elif not command:
+            pass
         else:
             print("invalid command.")
 
