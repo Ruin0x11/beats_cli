@@ -167,7 +167,7 @@ def prompt_albums(r):
     for album in albums:
         n += 1
         x.add_row([n, colored(album['name'], "blue"), colored(str(album['num_songs']), "magenta")])
-    print("Albums of " + r.json()['query'] + ":")
+    print(colored("Albums by " + r.json()['query'] + ":", attrs=['underline']))
     print(x)
     res = get_input("Album? ")
     if not res:
@@ -267,6 +267,8 @@ class TestStyle(Style):
 command_completer = WordCompleter([
     "random",
     "search",
+    "artist",
+    "album",
     "history",
     "queue",
     "skip",
