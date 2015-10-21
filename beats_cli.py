@@ -233,7 +233,6 @@ def add(query):
         return
     if is_url(query) == True:
         r = requests.post(beats_url() + "/v1/queue/add", data={"token":session['token'], "url":query})
-        print(r.json())
         if r.json().get('message'):
             get_login()
             return
