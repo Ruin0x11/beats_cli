@@ -12,6 +12,7 @@ The following dependencies are needed:
 
 # Available Commands
 ```
+add [query/url] (add song if only one search result, or stream url)
 album [album name]
 artist [artist name]
 history
@@ -21,7 +22,7 @@ pause
 queue
 quit
 random
-remove
+remove <index>
 search [query]
 skip
 topartists
