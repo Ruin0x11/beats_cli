@@ -220,7 +220,7 @@ def prompt_songs(r):
         num = int(res)
     except ValueError:
         print("not an integer")
-    if 1 <= num <= r.json()['limit']:
+    if 1 <= num <= len(songs):
         song = songs[num-1]
     else:
         print("not in range")
