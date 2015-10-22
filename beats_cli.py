@@ -128,6 +128,8 @@ def remove():
     queue = r.json()['queue']
     print_queue(r)
     query = get_input("Which song? ")
+    if not query:
+        return
 
     try:
         num = int(query)
@@ -141,10 +143,10 @@ def remove():
         print("not in range")
         return
 
-    remove_song(song['id'])
+    remove_song(song)
 
 def remove_song(song):
-    r = requests.delete(beats_url() + "/v1/queue/" + str(song), data={'token':session['token']})
+    r = requests.delete(beats_url() + "/v1/queue/" + str(song['id']), data={'token':session['token']})
     if r.json().get('message'):
         print("Couldn't remove song (added from stream?)")
         return
@@ -179,15 +181,18 @@ def prompt_albums(r):
         print("No results.")
         return
     n = 0
+    total_songs = 0
     x = PrettyTable(["#", "Album", "Songs"])
     x.border = False
     x.align['Album'] = "l"
     x.align['Songs'] = "r"
     for album in albums:
         n += 1
+        total_songs += album['num_songs']
         x.add_row([n, colored(album['name'], "blue"), colored(str(album['num_songs']), "magenta")])
     print(colored("Albums by " + r.json()['query'] + ":", attrs=['underline']))
     print(x)
+    print("Total songs: " + str(total_songs))
     res = get_input("Album? ")
     if not res:
         return
