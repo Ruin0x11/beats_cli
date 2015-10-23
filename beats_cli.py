@@ -29,7 +29,6 @@ s = ccso.Network("webapps.cs.uiuc.edu", 105)
 def is_url(url):
     parsed_url = urllib.parse.urlparse(url)
     return bool(parsed_url.scheme)
-    
 
 def beats_url():
     return BEATS_URL + str(endpoint)
@@ -40,7 +39,10 @@ def get_login():
     if os.path.isfile(SESSION_FILE):
         with open(SESSION_FILE, 'rb') as f:
             session = pickle.load(f)
-        return
+        if is_session_valid() == True:
+            return
+        else:
+            os.remove(SESSION_FILE)
 
     username = get_input("Username: ")
     password = get_input("Password: ", is_password=True)
@@ -52,6 +54,13 @@ def get_login():
         session = dict(r.json())
         with open(SESSION_FILE, 'wb') as f:
             pickle.dump(session, f, pickle.HIGHEST_PROTOCOL)
+
+def is_session_valid():
+    r = requests.get(beats_url() + "/v1/session/" + session['token'])
+    if r.status_code is not 200:
+        print("Session has expired.")
+        return False
+    return True
 
 def print_queue_now():
     r = requests.get(beats_url() + "/v1/queue")
@@ -227,7 +236,7 @@ def prompt_songs(r):
         return
     response = requests.post(beats_url() + "/v1/queue/add", data={'token':session['token'], 'id':str(song['id'])})
     json = response.json()
-    if json.get('message'):
+    if response.status_code is not 200:
         get_login()
     else:
         # print("Added " + song['artist'] + " - " + song['title'])
@@ -238,7 +247,7 @@ def add(query):
         return
     if is_url(query) == True:
         r = requests.post(beats_url() + "/v1/queue/add", data={"token":session['token'], "url":query})
-        if r.json().get('message'):
+        if response.status_code is not 200:
             get_login()
             return
         else:
@@ -254,7 +263,7 @@ def add(query):
     elif len(songs) == 1:
         song = songs[0]
         r = requests.post(beats_url() + "/v1/queue/add", data={'token':session['token'], 'id':str(song['id'])})
-        if r.json().get('message'):
+        if response.status_code is not 200:
             get_login()
             return
         else:
@@ -268,7 +277,7 @@ def add(query):
 def pause():
     r = requests.post(beats_url() + "/v1/player/pause", data={'token':session['token']})
     response = r.json()
-    if response.get('message'):
+    if response.status_code is not 200:
         get_login()
     else:
         update_status(r.json())
@@ -276,7 +285,7 @@ def pause():
 def play_next():
     r = requests.post(beats_url() + "/v1/player/play_next", data={'token':session['token']})
     response = r.json()
-    if response.get('message'):
+    if response.status_code is not 200:
         get_login()
     else:
         update_status(r.json())
