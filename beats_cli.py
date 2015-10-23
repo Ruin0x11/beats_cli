@@ -42,6 +42,7 @@ def get_login():
         if is_session_valid() == True:
             return
         else:
+            print("Session has expired.")
             os.remove(SESSION_FILE)
 
     username = get_input("Username: ")
@@ -58,7 +59,6 @@ def get_login():
 def is_session_valid():
     r = requests.get(beats_url() + "/v1/session/" + session['token'])
     if r.status_code is not 200:
-        print("Session has expired.")
         return False
     return True
 
@@ -136,7 +136,7 @@ def remove():
     r = requests.get(beats_url() + "/v1/queue")
     queue = r.json()['queue']
     print_queue(r)
-    query = get_input("Which song? ")
+    query = get_input("Song? ")
     if not query:
         return
 
@@ -156,7 +156,7 @@ def remove():
 
 def remove_song(song):
     r = requests.delete(beats_url() + "/v1/queue/" + str(song['id']), data={'token':session['token']})
-    if r.json().get('message'):
+    if r.status_code is not 200:
         print("Couldn't remove song (added from stream?)")
         return
     print("Removed " + song['artist'] + " - " + song['title'] + ".")
@@ -170,7 +170,7 @@ def show_history():
 def show_top_songs():
     r = requests.get(beats_url() + "/v1/songs/top_songs")
     songs = r.json()['results']
-    print_songs(songs)
+    prompt_songs(r)
 
 def show_top_artists():
     r = requests.get(beats_url() + "/v1/songs/top_artists")
@@ -272,7 +272,6 @@ def add(query):
             return
     else:
         prompt_songs(r)
-
 
 def pause():
     r = requests.post(beats_url() + "/v1/player/pause", data={'token':session['token']})
@@ -404,6 +403,8 @@ def run_command(text):
                     os.remove("./art")
                 wget.download(beats_url() + "/" + current['art_uri'], out="art")
                 subprocess.call("./imgt.sh art", shell=True)
+            else:
+                print("No art available.")
         elif command == "quit":
             quit()
         elif not command:
