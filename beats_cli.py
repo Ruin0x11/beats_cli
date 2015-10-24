@@ -247,7 +247,7 @@ def add(query):
         return
     if is_url(query) == True:
         r = requests.post(beats_url() + "/v1/queue/add", data={"token":session['token'], "url":query})
-        if response.status_code is not 200:
+        if r.status_code is not 200:
             get_login()
             return
         else:
@@ -263,7 +263,7 @@ def add(query):
     elif len(songs) == 1:
         song = songs[0]
         r = requests.post(beats_url() + "/v1/queue/add", data={'token':session['token'], 'id':str(song['id'])})
-        if response.status_code is not 200:
+        if r.status_code is not 200:
             get_login()
             return
         else:
@@ -276,7 +276,7 @@ def add(query):
 def pause():
     r = requests.post(beats_url() + "/v1/player/pause", data={'token':session['token']})
     response = r.json()
-    if response.status_code is not 200:
+    if r.status_code is not 200:
         get_login()
     else:
         update_status(r.json())
@@ -284,7 +284,7 @@ def pause():
 def play_next():
     r = requests.post(beats_url() + "/v1/player/play_next", data={'token':session['token']})
     response = r.json()
-    if response.status_code is not 200:
+    if r.status_code is not 200:
         get_login()
     else:
         update_status(r.json())
@@ -298,7 +298,10 @@ def player_set_volume(query):
 
     if 0 <= vol <= 100:
         r = requests.post(beats_url() + "/v1/player/volume", data={'token':session['token'], 'volume':vol})
-        update_status(r.json())
+        if r.status_code is not 200:
+            get_login()
+        else:
+            update_status(r.json())
     else:
         print("volume must be between 0 and 100.")
 
@@ -307,10 +310,14 @@ def now_playing():
     r = requests.get(beats_url() + "/v1/now_playing")
     json = r.json()
     update_status(json['player_status'])
-    current = json['media']
+    if json.get('media'):
+        current = json['media']
 
 def print_now_playing():
     r = requests.get(beats_url() + "/v1/now_playing")
+    if not r.json().get('media'):
+        print("No song playing.")
+        return
     song = r.json()['media']
     print("Title: " + colored(song['title'], "blue"))
     print("Artist: " + colored(song['artist'], "magenta"))
@@ -419,7 +426,7 @@ def main():
         state = status['state']
         volume = status['volume']
         tb = "State: " + state + " Volume: " + str(volume)
-        if status.get('media'):
+        if current:
             artist = current['artist']
             title = current['title']
             current_time = int(float(status['current_time'] / 1000))
