@@ -15,7 +15,8 @@ from pygments.style import Style
 from pygments.token import Token
 from prettytable import PrettyTable
 
-SESSION_FILE = "session.pickle"
+CURRENT_DIR = os.path.dirname(__file__)
+SESSION_FILE = os.path.join(CURRENT_DIR, "session.pickle")
 BEATS_URL = "https://www-s.acm.illinois.edu/beats/"
 MAXLEN = 30
 
@@ -406,10 +407,12 @@ def run_command(text):
             show_top_artists()
         elif command == "image":
             if current.get('art_uri'):
-                if os.path.isfile("art"):
-                    os.remove("./art")
-                wget.download(beats_url() + "/" + current['art_uri'], out="art")
-                subprocess.call("./imgt.sh art", shell=True)
+                p = os.path.join(CURRENT_DIR, "art")
+                if os.path.isfile(p):
+                    os.remove(p)
+                wget.download(beats_url() + "/" + current['art_uri'], out=p)
+                imgt = os.path.join(CURRENT_DIR, "imgt.sh")
+                subprocess.call("bash " + imgt + " " + p, shell=True)
             else:
                 print("No art available.")
         elif command == "quit":
@@ -438,10 +441,15 @@ def main():
         return [(Token.Toolbar, tb)]
 
     while True:
-        text = get_input('>> ',
-                      get_bottom_toolbar_tokens=get_bottom_toolbar_tokens,
-                      style=TestStyle,
-                      completer=command_completer)
+        try:
+            text = get_input('>> ',
+                          get_bottom_toolbar_tokens=get_bottom_toolbar_tokens,
+                          style=TestStyle,
+                          completer=command_completer)
+        except EOFError:
+            break
+        except KeyboardInterrupt:
+            break
 
         run_command(text)
 
