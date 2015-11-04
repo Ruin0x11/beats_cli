@@ -25,8 +25,6 @@ current = dict()
 session = dict()
 endpoint = 1104
 
-s = ccso.Network("webapps.cs.uiuc.edu", 105)
-
 def is_url(url):
     parsed_url = urllib.parse.urlparse(url)
     return bool(parsed_url.scheme)
@@ -68,6 +66,8 @@ def print_queue_now():
     print_queue(r)
 
 def print_queue(response):
+    s = ccso.Network("webapps.cs.uiuc.edu", 105)
+
     queue = response.json()['queue']
     x = PrettyTable(["#", "Title", "Artist", "Album", "Length", "Voted By"])
     x.border = False
@@ -96,6 +96,8 @@ def print_queue(response):
     print(x)
 
 def print_songs(songs):
+    s = ccso.Network("webapps.cs.uiuc.edu", 105)
+
     x = PrettyTable(["#", "Title", "Artist", "Album", "Length", "Uploader", "Plays"])
     x.border = False
     x.align["Title"] = "l"
@@ -107,7 +109,10 @@ def print_songs(songs):
         n += 1
         title = colored(song['title'][:MAXLEN], "blue")
         artist = colored(song['artist'][:MAXLEN], "magenta")
-        album = colored(song['album'][:MAXLEN], "yellow")
+        if song.get('album'):
+            album = colored(song['album'][:MAXLEN], "yellow")
+        else:
+            album = ''
         length = int(float(song['length']))
         length = colored(datetime.timedelta(seconds=length), "red")
         playcount = int(song['play_count'])
@@ -162,6 +167,14 @@ def remove_song(song):
         return
     print("Removed " + song['artist'] + " - " + song['title'] + ".")
     print_queue(r)
+
+def clear_queue():
+    r = requests.delete(beats_url() + "/v1/queue", data={'token':session['token']})
+    if r.status_code is not 200:
+        print("Couldn't clear queue.")
+        print(r.json())
+        return
+    print("Cleared the queue.")
 
 def show_history():
     r = requests.get(beats_url() + "/v1/songs/history")
@@ -356,6 +369,7 @@ command_completer = WordCompleter([
     "topsongs",
     "topartists",
     "image",
+    "clear",
 ], ignore_case=True)
 
 def run_command(text):
@@ -397,6 +411,8 @@ def run_command(text):
                     remove_song(num)
                 except ValueError:
                     print("not an integer")
+        elif command == "clear":
+            clear_queue()
         elif command == "volume":
             player_set_volume(query)
         elif command == "nowplaying":
